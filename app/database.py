@@ -7,7 +7,7 @@ SQLALCHEMY_DATABASE_URL = "sqlite:///./sql_app.db"
 
 # PostgreSQL kullanmak isterseniz:
 # SQLALCHEMY_DATABASE_URL = "postgresql://user:password@localhost/dbname"
-
+    
 # Engine oluştur
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, 
