@@ -30,10 +30,12 @@ app.include_router(feedback.router)
 app.include_router(feedback.categories_router)
 
 # Yeni eklenen router'lar
-from app.routers import weather, paycell, scores
+from app.routers import weather, paycell, scores, city_statistics, location
 app.include_router(weather.router)
 app.include_router(paycell.router)
 app.include_router(scores.router)
+app.include_router(city_statistics.router)
+app.include_router(location.router)
 
 
 @app.get("/")
