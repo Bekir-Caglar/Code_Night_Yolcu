@@ -132,6 +132,76 @@ def find_city_from_coordinates_get(
     return find_city_from_coordinates(coordinates, db)
 
 
+@router.get("/city-coordinates/{city_id}")
+def get_city_coordinates(city_id: str, db: Session = Depends(get_db)):
+    """
+    Şehir ID'sinden (plaka kodu) enlem/boylam bilgisi getir
+    
+    Flutter şehir seçtiğinde bu endpoint'i kullanarak koordinatları alır.
+    
+    Örnek: GET /api/location/city-coordinates/06
+    
+    Response:
+    {
+        "success": true,
+        "data": {
+            "city_id": "06",
+            "city_name": "Ankara",
+            "latitude": 39.9334,
+            "longitude": 32.8597
+        }
+    }
+    """
+    try:
+        # Şehir var mı kontrol et
+        city = db.query(models.City).filter(models.City.city_id == city_id).first()
+        if not city:
+            raise HTTPException(
+                status_code=404,
+                detail=error_response(
+                    f"Şehir ID {city_id} bulunamadı",
+                    "CITY_NOT_FOUND"
+                )
+            )
+        
+        # Geopy ile şehir adından koordinat bul
+        from ..geocoding_service import sehirden_koordinat_bul
+        
+        result = sehirden_koordinat_bul(city.name)
+        
+        if not result['success']:
+            raise HTTPException(
+                status_code=404,
+                detail=error_response(
+                    result.get('error', 'Koordinat bulunamadı'),
+                    "COORDINATES_NOT_FOUND"
+                )
+            )
+        
+        return success_response(
+            data={
+                "city_id": city.city_id,
+                "city_name": city.name,
+                "region": city.region,
+                "latitude": result['latitude'],
+                "longitude": result['longitude'],
+                "full_address": result['full_address']
+            },
+            message=f"{city.name} koordinatları başarıyla bulundu"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=error_response(
+                f"Koordinat bulunurken hata: {str(e)}",
+                "COORDINATE_FETCH_ERROR"
+            )
+        )
+
+
 @router.get("/test-coordinates")
 def test_coordinate_service():
     """

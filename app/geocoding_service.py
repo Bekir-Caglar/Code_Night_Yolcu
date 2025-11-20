@@ -154,6 +154,96 @@ def get_city_id_from_name(city_name: str, db) -> str:
     return None
 
 
+def sehirden_koordinat_bul(city_name: str, retry_count: int = 3) -> dict:
+    """
+    Şehir adından koordinat (enlem/boylam) bul
+    
+    Args:
+        city_name: Şehir adı (örn: "Ankara", "İstanbul")
+        retry_count: Hata durumunda tekrar deneme sayısı
+        
+    Returns:
+        dict: {
+            'success': bool,
+            'latitude': float veya None,
+            'longitude': float veya None,
+            'full_address': str,
+            'error': str veya None
+        }
+    """
+    print(f"\n🔍 Şehir: {city_name}")
+    
+    # Nominatim geolocator başlat
+    geolocator = Nominatim(user_agent="turkcell_citypulse_api_v1", timeout=10)
+    
+    # Türkiye'ye özel arama yap
+    search_query = f"{city_name}, Turkey"
+    
+    for attempt in range(retry_count):
+        try:
+            # Geocoding yap (şehir adından koordinat bul)
+            location = geolocator.geocode(search_query, language='tr', exactly_one=True)
+            
+            if not location:
+                return {
+                    'success': False,
+                    'latitude': None,
+                    'longitude': None,
+                    'full_address': None,
+                    'error': f'{city_name} şehri bulunamadı'
+                }
+            
+            print(f"✅ Koordinat: {location.latitude}, {location.longitude}")
+            
+            return {
+                'success': True,
+                'latitude': location.latitude,
+                'longitude': location.longitude,
+                'full_address': location.address,
+                'error': None
+            }
+        
+        except GeocoderTimedOut:
+            if attempt < retry_count - 1:
+                print(f"⏱️ Timeout, tekrar deneniyor... ({attempt + 1}/{retry_count})")
+                time.sleep(1)
+                continue
+            else:
+                return {
+                    'success': False,
+                    'latitude': None,
+                    'longitude': None,
+                    'full_address': None,
+                    'error': 'Geocoder zaman aşımı'
+                }
+        
+        except GeocoderServiceError as e:
+            return {
+                'success': False,
+                'latitude': None,
+                'longitude': None,
+                'full_address': None,
+                'error': f'Geocoder servisi hatası: {str(e)}'
+            }
+        
+        except Exception as e:
+            return {
+                'success': False,
+                'latitude': None,
+                'longitude': None,
+                'full_address': None,
+                'error': f'Beklenmeyen hata: {str(e)}'
+            }
+    
+    return {
+        'success': False,
+        'latitude': None,
+        'longitude': None,
+        'full_address': None,
+        'error': 'Maksimum deneme sayısı aşıldı'
+    }
+
+
 # Manuel test fonksiyonu
 if __name__ == "__main__":
     print("🧪 Koordinat -> Şehir Test Scripti\n")
