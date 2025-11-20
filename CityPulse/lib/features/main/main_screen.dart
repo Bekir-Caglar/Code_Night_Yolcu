@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:citypulse/core/theme/app_theme.dart';
 import 'package:citypulse/features/home/home_screen.dart';
 import 'package:citypulse/features/add_data/add_data_screen.dart';
-import 'package:citypulse/features/dashboard/dashboard_screen.dart';
+import 'package:citypulse/features/notifications/notifications_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -20,7 +20,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const AddDataScreen(),
-    const DashboardScreen(),
+    const NotificationsScreen(),
   ];
 
   @override
@@ -96,16 +96,16 @@ class _MainScreenState extends State<MainScreen> {
               ),
               BottomNavigationBarItem(
                 icon: Icon(
-                  isIOS ? CupertinoIcons.chart_bar : Icons.bar_chart_outlined,
+                  isIOS ? CupertinoIcons.bell : Icons.notifications_outlined,
                   size: 26,
                 ),
                 activeIcon: Icon(
                   isIOS
-                      ? CupertinoIcons.chart_bar_fill
-                      : Icons.bar_chart_rounded,
+                      ? CupertinoIcons.bell_fill
+                      : Icons.notifications_rounded,
                   size: 26,
                 ),
-                label: 'Panel',
+                label: 'Uyarılar',
               ),
             ],
           ),

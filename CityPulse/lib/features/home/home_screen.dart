@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:citypulse/core/theme/app_theme.dart';
 import 'package:citypulse/widgets/city_map_widget.dart';
 import 'package:citypulse/widgets/score_card_widget.dart';
+import 'package:citypulse/features/feedback/feedback_screen.dart';
 import 'package:gap/gap.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:math';
@@ -18,6 +19,68 @@ class _HomeScreenState extends State<HomeScreen> {
   Position? _currentPosition;
   bool _isLoadingLocation = false;
   LocationPermission? _permissionStatus;
+  bool _hasInitializedLocation = false;
+
+  // Mock data for top green cities
+  final Map<String, dynamic> _topGreenCitiesData = {
+    "success": true,
+    "message": "Haftanın en yeşil 3 şehri",
+    "data": {
+      "week_period": {
+        "start_date": "2025-11-14",
+        "end_date": "2025-11-21"
+      },
+      "top_3_green_cities": [
+        {
+          "city_id": "21",
+          "city_name": "Diyarbakir",
+          "region": "Guneydogu Anadolu",
+          "population": 1791000,
+          "sustainability_score": 51.57,
+          "score_breakdown": {
+            "signal_strength": 82.86,
+            "air_quality": 71.43,
+            "internet_traffic": 200.71,
+            "eco_feedback_ratio": 50
+          },
+          "rank": 1,
+          "badge": "🥇 Haftanın En Yeşil Şehri"
+        },
+        {
+          "city_id": "34",
+          "city_name": "Istanbul",
+          "region": "Marmara",
+          "population": 15840000,
+          "sustainability_score": 49.54,
+          "score_breakdown": {
+            "signal_strength": 89.57,
+            "air_quality": 66.43,
+            "internet_traffic": 882.86,
+            "eco_feedback_ratio": 33.33
+          },
+          "rank": 2,
+          "badge": "🥈 İkinci"
+        },
+        {
+          "city_id": "06",
+          "city_name": "Ankara",
+          "region": "Ic Anadolu",
+          "population": 5747000,
+          "sustainability_score": 44.2,
+          "score_breakdown": {
+            "signal_strength": 85.86,
+            "air_quality": 86.43,
+            "internet_traffic": 450,
+            "eco_feedback_ratio": 0
+          },
+          "rank": 3,
+          "badge": "🥉 Üçüncü"
+        }
+      ],
+      "all_cities_count": 5,
+      "evaluated_cities_count": 5
+    }
+  };
 
   final List<String> _turkishCities = [
     'Adana',
@@ -136,10 +199,13 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Widget build edildikten sonra konum izni iste
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeLocation();
-    });
+    // Widget build edildikten sonra konum izni iste (sadece ilk kez)
+    if (!_hasInitializedLocation) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _initializeLocation();
+        _hasInitializedLocation = true;
+      });
+    }
   }
 
   Future<void> _initializeLocation() async {
@@ -215,9 +281,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // Konum alma
       print('Konum alınıyor...');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Konumunuz alınıyor...')));
 
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
@@ -241,16 +304,10 @@ class _HomeScreenState extends State<HomeScreen> {
           _currentCity = nearestCity;
           _isLoadingLocation = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Konumunuz tespit edildi: $nearestCity')),
-        );
       } else {
         setState(() {
           _isLoadingLocation = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Konumunuz tespit edilemedi')),
-        );
       }
     } catch (e) {
       print('Konum alma hatası: $e');
@@ -421,50 +478,74 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        centerTitle: false,
         title: const Text('Şehrin Nabzı'),
         actions: [
-          Row(
-            children: [
-              TextButton.icon(
-                onPressed: _showCitySelectionBottomSheet,
-                icon: const Icon(Icons.location_on, color: Colors.white),
-                label: Text(
-                  _currentCity,
-                  style: const TextStyle(color: Colors.white),
-                ),
-                style: TextButton.styleFrom(foregroundColor: Colors.white),
-              ),
-              if (_isLoadingLocation)
-                Container(
-                  width: 22,
-                  height: 22,
-                  margin: const EdgeInsets.only(right: 8),
-                  child: const CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2.0,
+          Flexible(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: TextButton.icon(
+                    onPressed: _showCitySelectionBottomSheet,
+                    icon: const Icon(Icons.location_on, color: Colors.white),
+                    label: Text(
+                      _currentCity,
+                      style: const TextStyle(color: Colors.white),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
                   ),
                 ),
-              const Gap(8),
-              // Permission indicator / action
-              if (_permissionStatus == null ||
-                  _permissionStatus == LocationPermission.denied)
-                IconButton(
-                  icon: const Icon(
-                    Icons.location_searching,
-                    color: Colors.white,
+                if (_isLoadingLocation)
+                  Container(
+                    width: 22,
+                    height: 22,
+                    margin: const EdgeInsets.only(right: 8),
+                    child: const CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2.0,
+                    ),
                   ),
-                  tooltip: 'Konum izni iste',
-                  onPressed: () async => await _initializeLocation(),
-                ),
-              if (_permissionStatus == LocationPermission.deniedForever)
-                IconButton(
-                  icon: const Icon(Icons.settings, color: Colors.white),
-                  tooltip: 'Ayarlar',
-                  onPressed: () async => await Geolocator.openAppSettings(),
-                ),
-            ],
+                const Gap(4),
+                // Permission indicator / action
+                if (_permissionStatus == null ||
+                    _permissionStatus == LocationPermission.denied)
+                  IconButton(
+                    icon: const Icon(
+                      Icons.location_searching,
+                      color: Colors.white,
+                    ),
+                    tooltip: 'Konum izni iste',
+                    onPressed: () async => await _initializeLocation(),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                if (_permissionStatus == LocationPermission.deniedForever)
+                  IconButton(
+                    icon: const Icon(Icons.settings, color: Colors.white),
+                    tooltip: 'Ayarlar',
+                    onPressed: () async => await Geolocator.openAppSettings(),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+              ],
+            ),
           ),
-          IconButton(icon: const Icon(Icons.notifications), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.feedback, color: Colors.white),
+            tooltip: 'Geri Bildirimler',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const FeedbackScreen()),
+              );
+            },
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -478,6 +559,11 @@ class _HomeScreenState extends State<HomeScreen> {
               currentCity: _currentCity,
               userPosition: _currentPosition,
             ),
+
+            const Gap(16),
+
+            // Top Green Cities Section
+            _buildTopGreenCities(),
 
             const Gap(16),
 
@@ -501,25 +587,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
 
             const Gap(24),
-
-            // Recommendations Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Öneriler',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: AppColors.primaryBlue,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const Gap(12),
-                  _buildRecommendationCards(),
-                ],
-              ),
-            ),
 
             const Gap(24),
           ],
@@ -572,12 +639,12 @@ class _HomeScreenState extends State<HomeScreen> {
             const Gap(12),
             Expanded(
               child: ScoreCardWidget(
-                title: 'Eko Skor',
-                value: 88.0,
-                unit: '%',
-                icon: Icons.eco,
-                color: AppColors.successGreen,
-                trend: 8.7,
+                title: 'Paycell Kullanımı',
+                value: 45.0,
+                unit: 'GB',
+                icon: Icons.account_balance_wallet,
+                color: AppColors.primaryYellow,
+                trend: 15.3,
               ),
             ),
           ],
@@ -586,92 +653,149 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildRecommendationCards() {
-    return Column(
-      children: [
-        _buildRecommendationCard(
-          icon: Icons.warning_amber_rounded,
-          title: 'Yoğun Trafik Uyarısı',
-          description:
-              '${_currentCity} merkezinde trafik sıkışıklığı tespit edildi. Alternatif rotaları değerlendirebilirsiniz.',
-          color: AppColors.alertRed,
-        ),
-        const Gap(12),
-        _buildRecommendationCard(
-          icon: Icons.tips_and_updates,
-          title: 'Ağ Optimizasyonu',
-          description:
-              '${_currentCity} bölgesinde ek baz istasyonları ile sinyal gücü artırılabilir.',
-          color: AppColors.primaryYellow,
-        ),
-        const Gap(12),
-        _buildRecommendationCard(
-          icon: Icons.emoji_events,
-          title: 'Harika Performans',
-          description:
-              '${_currentCity} mükemmel eko-skor gösteriyor. Sürdürülebilir uygulamalara devam edin!',
-          color: AppColors.successGreen,
-        ),
-      ],
-    );
-  }
+  Widget _buildTopGreenCities() {
+    final cities = _topGreenCitiesData['data']['top_3_green_cities'] as List<dynamic>;
 
-  Widget _buildRecommendationCard({
-    required IconData icon,
-    required String title,
-    required String description,
-    required Color color,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.eco, color: AppColors.successGreen, size: 24),
+              const Gap(8),
+              Text(
+                'Haftanın Yeşil Şehirleri',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppColors.primaryBlue,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const Gap(12),
+          SizedBox(
+            height: 140, // Slightly taller for better visibility
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: cities.length,
+              itemBuilder: (context, index) {
+                final city = cities[index] as Map<String, dynamic>;
+                final rank = city['rank'] as int;
+                Color cardColor;
+                Color textColor = Colors.black; // Changed to black for better readability
+                IconData rankIcon;
+
+                switch (rank) {
+                  case 1:
+                    cardColor = const Color(0xFFFFD700); // Gold
+                    rankIcon = Icons.emoji_events;
+                    break;
+                  case 2:
+                    cardColor = const Color(0xFFC0C0C0); // Silver
+                    rankIcon = Icons.emoji_events;
+                    break;
+                  case 3:
+                    cardColor = const Color(0xFFCD7F32); // Bronze
+                    rankIcon = Icons.emoji_events;
+                    break;
+                  default:
+                    cardColor = AppColors.primaryBlue;
+                    rankIcon = Icons.star;
+                }
+
+                return Container(
+                  width: 180,
+                  margin: const EdgeInsets.only(right: 12),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [cardColor.withOpacity(0.8), cardColor],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: cardColor.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(rankIcon, color: textColor, size: 20),
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '${city['sustainability_score'].toStringAsFixed(1)}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: textColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
+                        Text(
+                          city['city_name'],
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: textColor,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const Gap(4),
+                        Text(
+                          city['region'],
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: textColor.withOpacity(0.8),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const Gap(8),
+                        Container(
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                          child: FractionallySizedBox(
+                            alignment: Alignment.centerLeft,
+                            widthFactor: (city['sustainability_score'] as double) / 100,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.8),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 28),
-            ),
-            const Gap(16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const Gap(4),
-                  Text(
-                    description,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.textPrimary.withOpacity(0.7),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
