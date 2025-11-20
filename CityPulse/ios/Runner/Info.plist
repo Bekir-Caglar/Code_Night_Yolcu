@@ -45,5 +45,12 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Konum izinleri açıklamaları (Türkçe) -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Şehrinizdeki verileri haritada göstermek için konum bilgisi gerekiyor.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Uygulama kullanılırken konumunuz ile size özel öneriler sunmak için konum erişimi gereklidir.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Konumunuza göre bildirimler ve veri güncellemeleri yapmak için arka planda konum erişimi gerekebilir.</string>
 </dict>
 </plist>
