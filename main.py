@@ -2,16 +2,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine
 from app import models
-from app.routers import items
+from app.routers import cities, stats, feedback
 
-# Veritabanı tablolarını oluştur
-models.Base.metadata.create_all(bind=engine)
+# NOT: Veritabanı zaten mevcut - sadece bağlanıyoruz, tablo oluşturmuyoruz
+# models.Base.metadata.create_all(bind=engine)  # KAPALI - Veritabanı hazır
 
 # FastAPI uygulamasını oluştur
 app = FastAPI(
-    title="Turkcell Proje API",
-    description="FastAPI ile geliştirilmiş örnek bir REST API - Flutter Frontend ile entegrasyon",
-    version="1.0.0"
+    title="Turkcell Code Night - Yolcu Projesi API",
+    description="Mevcut veritabanından veri çeker ve Flutter'a sunar - READ-ONLY modda çalışır",
+    version="2.0.0"
 )
 
 # CORS ayarları - Flutter mobil uygulamanın API'ye erişebilmesi için
@@ -23,8 +23,17 @@ app.add_middleware(
     allow_headers=["*"],  # Tüm header'lara izin ver
 )
 
-# Router'ları ekle
-app.include_router(items.router)
+# Router'ları ekle (Sadece READ endpoint'leri aktif)
+app.include_router(cities.router)
+app.include_router(stats.router)
+app.include_router(feedback.router)
+app.include_router(feedback.categories_router)
+
+# Yeni eklenen router'lar
+from app.routers import weather, paycell, scores
+app.include_router(weather.router)
+app.include_router(paycell.router)
+app.include_router(scores.router)
 
 
 @app.get("/")

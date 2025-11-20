@@ -1,27 +1,63 @@
-# Turkcell Proje - Backend API
+# Turkcell Code Night - Yolcu Projesi Backend API
 
-## Hızlı Başlangıç
+## 🎯 Proje Özeti
+
+Backend **READ-ONLY** modda çalışır. Mevcut SQLite veritabanından veri çeker ve Flutter uygulamasına sunar.
+
+## ⚠️ ÖNEMLİ NOTLAR
+
+- ✅ **Veritabanı hazır** - Backend sadece verileri okur
+- ✅ **CRUD işlemlerinden sadece READ (GET) aktif**
+- ❌ CREATE/UPDATE/DELETE endpoint'leri kapalı
+- ✅ Flutter için optimize edilmiş response formatı
+- ✅ CORS aktif - tüm origin'lere izin var
+
+## 🚀 Hızlı Başlangıç
 
 ### 1. Uygulamayı Çalıştır
 ```bash
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 2. API Endpoints
+### 2. API Dokümantasyonu
+- **Swagger UI:** http://localhost:8000/docs
+- **ReDoc:** http://localhost:8000/redoc
+- **Health Check:** http://localhost:8000/health
 
-**Base URL:** `http://localhost:8000`
+## 📡 API Endpoints (Sadece GET)
 
-#### Ana Endpoint'ler
-- `GET /` - API bilgisi
-- `GET /health` - Sağlık kontrolü
-- `GET /docs` - Swagger UI (interaktif API dokümantasyonu)
+### Şehirler (`/api/cities/`)
+- `GET /api/cities/` - Tüm şehirler
+- `GET /api/cities/{city_id}` - Tek şehir
 
-#### Items CRUD Endpoints
-- `POST /api/items/` - Yeni item oluştur
-- `GET /api/items/` - Tüm itemları listele
-- `GET /api/items/{id}` - Tek item getir
-- `PUT /api/items/{id}` - Item güncelle
-- `DELETE /api/items/{id}` - Item sil
+### Ağ İstatistikleri (`/api/stats/`)
+- `GET /api/stats/` - Tümü
+- `GET /api/stats/{city_id}` - Şehre göre
+- `GET /api/stats/{city_id}/{date}` - Şehir + tarih
+
+### Hava Durumu (`/api/weather/`)
+- `GET /api/weather/` - Tümü
+- `GET /api/weather/{city_id}` - Şehre göre
+- `GET /api/weather/{city_id}/{date}` - Şehir + tarih
+
+### Paycell (`/api/paycell/`)
+- `GET /api/paycell/` - Tümü
+- `GET /api/paycell/{city_id}` - Şehre göre
+- `GET /api/paycell/{city_id}/{date}` - Şehir + tarih
+
+### Skorlar (`/api/scores/`)
+- `GET /api/scores/` - Tümü
+- `GET /api/scores/{city_id}` - Şehre göre
+- `GET /api/scores/{city_id}/{date}` - Şehir + tarih
+
+### Feedback (`/api/feedback/`)
+- `GET /api/feedback/` - Tümü
+- `GET /api/feedback/{id}` - Tek feedback
+- `GET /api/feedback/city/{city_id}` - Şehre göre
+
+### Kategoriler (`/api/categories/`)
+- `GET /api/categories/` - Tümü
+- `GET /api/categories/{name}` - Tek kategori
 
 ### 3. Flutter İçin Response Formatı
 
@@ -48,43 +84,24 @@ Tüm endpoint'ler standart bir format döner:
 
 ### 4. Flutter İçin Örnek Request'ler
 
-#### Item Oluştur
+#### Tüm Şehirleri Getir
 ```
-POST http://localhost:8000/api/items/
-Content-Type: application/json
-
-{
-  "name": "Ürün Adı",
-  "description": "Açıklama",
-  "price": 99.99,
-  "is_available": true
-}
+GET http://localhost:8000/api/cities/
 ```
 
-#### Tüm Itemları Getir
+#### Ankara'nın Verilerini Getir
 ```
-GET http://localhost:8000/api/items/
-```
-
-#### Tek Item Getir
-```
-GET http://localhost:8000/api/items/1
+GET http://localhost:8000/api/cities/06
 ```
 
-#### Item Güncelle
+#### Ankara'nın Ağ Verilerini Getir
 ```
-PUT http://localhost:8000/api/items/1
-Content-Type: application/json
-
-{
-  "name": "Yeni Ürün Adı",
-  "price": 149.99
-}
+GET http://localhost:8000/api/stats/06
 ```
 
-#### Item Sil
+#### Belirli Tarihte Hava Durumu
 ```
-DELETE http://localhost:8000/api/items/1
+GET http://localhost:8000/api/weather/34/2024-11-20
 ```
 
 ### 5. Flutter İçin Önemli Notlar
