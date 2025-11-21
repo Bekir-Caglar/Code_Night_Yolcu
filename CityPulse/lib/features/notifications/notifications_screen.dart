@@ -1,114 +1,207 @@
 import 'package:flutter/material.dart';
 import 'package:citypulse/core/theme/app_theme.dart';
+import 'package:citypulse/core/network/api_service.dart';
+import 'package:citypulse/core/state/city_state.dart';
 import 'package:gap/gap.dart';
 
-class NotificationsScreen extends StatelessWidget {
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  final ApiService _apiService = ApiService();
+  Map<String, dynamic>? _cityStatistics;
+  bool _isLoading = true;
+
+  // CityState'den şehir bilgilerini al
+  String get _currentCity => CityState().currentCity;
+  Map<String, int> get _turkishCitiesMap => CityState().turkishCitiesMap;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCityStatistics();
+  }
+
+  Future<void> _loadCityStatistics() async {
+    try {
+      final cityId = CityState().getCurrentCityId();
+      if (cityId != null) {
+        final cityIdStr = cityId.toString().padLeft(2, '0');
+        final response = await _apiService.getCityStatisticsSummary(cityIdStr);
+        setState(() {
+          _cityStatistics = response;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Şehir istatistikleri yüklenirken hata: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Uyarılar'),
+        title: Text('$_currentCity Uyarıları'),
         backgroundColor: AppColors.primaryBlue,
         foregroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Şehir Verileri',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: AppColors.primaryBlue,
-                fontWeight: FontWeight.bold,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Şehir Verileri',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: AppColors.primaryBlue,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Gap(12),
+                  ..._buildMetricCards(),
+                  const Gap(24),
+                  Text(
+                    'Uyarılar',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: AppColors.primaryBlue,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Gap(12),
+                  ..._buildAlerts(),
+                ],
               ),
             ),
-            const Gap(12),
-            _buildMetricCard(
-              title: 'Trafik',
-              value: 150.5,
-              unit: 'GB',
-              maxValue: 200.0,
-              color: _getColorForTraffic(150.5),
-            ),
-            const Gap(12),
-            _buildMetricCard(
-              title: 'Sinyal',
-              value: 85.0,
-              unit: '%',
-              maxValue: 100.0,
-              color: _getColorForSignal(85.0),
-            ),
-            const Gap(12),
-            _buildMetricCard(
-              title: 'Hava Kalitesi',
-              value: 72.0,
-              unit: 'AQI',
-              maxValue: 150.0,
-              color: _getColorForAirQuality(72.0),
-            ),
-            const Gap(12),
-            _buildMetricCard(
-              title: 'Paycell Kullanımı',
-              value: 45.0,
-              unit: 'GB',
-              maxValue: 100.0,
-              color: _getColorForPaycell(45.0),
-            ),
-            const Gap(24),
-            Text(
-              'Öneriler',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: AppColors.primaryBlue,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const Gap(12),
-            _buildRecommendationCard(
-              icon: Icons.warning_amber_rounded,
-              title: 'Yoğun Trafik Uyarısı',
-              description:
-                  'İstanbul merkezinde trafik sıkışıklığı tespit edildi. Alternatif rotaları değerlendirebilirsiniz.',
-              color: AppColors.alertRed,
-            ),
-            const Gap(12),
-            _buildRecommendationCard(
-              icon: Icons.signal_cellular_alt,
-              title: 'Sinyal Güçlendirme',
-              description:
-                  'Sinyal gücü orta seviyede. WiFi ağlarına bağlanarak daha stabil bağlantı sağlayabilirsiniz.',
-              color: AppColors.primaryYellow,
-            ),
-            const Gap(12),
-            _buildRecommendationCard(
-              icon: Icons.air,
-              title: 'Hava Kalitesi İyileştirme',
-              description:
-                  'Hava kalitesi orta seviyede. Dışarı çıkarken maske kullanmanızı öneririz.',
-              color: AppColors.primaryYellow,
-            ),
-            const Gap(12),
-            _buildRecommendationCard(
-              icon: Icons.account_balance_wallet,
-              title: 'Paycell Kullanım Optimizasyonu',
-              description:
-                  'Paycell kullanımı yüksek. Veri tasarrufu için sıkıştırma özelliklerini kullanabilirsiniz.',
-              color: AppColors.alertRed,
-            ),
-            const Gap(12),
-            _buildRecommendationCard(
-              icon: Icons.emoji_events,
-              title: 'Harika Performans',
-              description:
-                  'İstanbul genel olarak iyi performans gösteriyor. Mevcut trendleri koruyun!',
-              color: AppColors.successGreen,
-            ),
-          ],
-        ),
-      ),
     );
+  }
+
+  List<Widget> _buildMetricCards() {
+    if (_cityStatistics == null) {
+      return [const Text('Şehir verileri yüklenemedi')];
+    }
+
+    final data = _cityStatistics!['data'] as Map<String, dynamic>?;
+    if (data == null) {
+      return [const Text('Şehir verileri bulunamadı')];
+    }
+
+    final trafficValue = data['avg_internet_usage_gb'] as double? ?? 0.0;
+    final signalValue = data['avg_signal_strength'] as double? ?? 0.0;
+    final airQualityValue = data['avg_air_quality'] as double? ?? 0.0;
+    final paycellValue = data['avg_daily_transactions'] as double? ?? 0.0;
+
+    return [
+      _buildMetricCard(
+        title: 'İnternet Trafiği',
+        value: trafficValue,
+        unit: 'GB',
+        maxValue: 200.0,
+        color: _getColorForTraffic(trafficValue),
+      ),
+      const Gap(12),
+      _buildMetricCard(
+        title: 'Sinyal Gücü',
+        value: signalValue,
+        unit: '%',
+        maxValue: 100.0,
+        color: _getColorForSignal(signalValue),
+      ),
+      const Gap(12),
+      _buildMetricCard(
+        title: 'Hava Kalitesi',
+        value: airQualityValue,
+        unit: 'AQI',
+        maxValue: 150.0,
+        color: _getColorForAirQuality(airQualityValue),
+      ),
+      const Gap(12),
+      _buildMetricCard(
+        title: 'Günlük İşlemler',
+        value: paycellValue,
+        unit: 'adet',
+        maxValue: 5000.0,
+        color: _getColorForPaycell(paycellValue),
+      ),
+    ];
+  }
+
+  List<Widget> _buildAlerts() {
+    if (_cityStatistics == null) {
+      return [const Text('Uyarılar yüklenemedi')];
+    }
+
+    final data = _cityStatistics!['data'] as Map<String, dynamic>?;
+    if (data == null) {
+      return [const Text('Uyarı verileri bulunamadı')];
+    }
+
+    final signalValue = data['avg_signal_strength'] as double? ?? 0.0;
+    final trafficValue = data['avg_internet_usage_gb'] as double? ?? 0.0;
+    final airQualityValue = data['avg_air_quality'] as double? ?? 0.0;
+
+    final alerts = <Widget>[];
+
+    // Sinyal gücü < 40 → bağlantı sorunu uyarısı
+    if (signalValue < 40) {
+      alerts.add(
+        _buildRecommendationCard(
+          icon: Icons.signal_cellular_connected_no_internet_4_bar,
+          title: 'Bağlantı Sorunu Uyarısı',
+          description:
+              'Sinyal gücü çok düşük (${signalValue.toStringAsFixed(1)}%). Bağlantı sorunları yaşayabilirsiniz.',
+          color: AppColors.alertRed,
+        ),
+      );
+      alerts.add(const Gap(12));
+    }
+
+    // İnternet trafiği > 120GB → yoğunluk bildirimi
+    if (trafficValue > 120) {
+      alerts.add(
+        _buildRecommendationCard(
+          icon: Icons.traffic,
+          title: 'Yoğunluk Bildirimi',
+          description:
+              'İnternet trafiği yüksek (${trafficValue.toStringAsFixed(1)}GB). Ağ yoğunluğu nedeniyle yavaşlamalar olabilir.',
+          color: AppColors.primaryYellow,
+        ),
+      );
+      alerts.add(const Gap(12));
+    }
+
+    // Hava kalitesi < 50 → 'Yeşil Alan Önerisi'
+    if (airQualityValue < 50) {
+      alerts.add(
+        _buildRecommendationCard(
+          icon: Icons.park,
+          title: 'Yeşil Alan Önerisi',
+          description:
+              'Hava kalitesi düşük (${airQualityValue.toStringAsFixed(1)} AQI). Daha fazla yeşil alan ve temiz hava için şehir planlaması önerilir.',
+          color: AppColors.successGreen,
+        ),
+      );
+      alerts.add(const Gap(12));
+    }
+
+    if (alerts.isEmpty) {
+      alerts.add(const Text('Şu anda aktif uyarı bulunmuyor'));
+    }
+
+    return alerts;
   }
 
   Color _getColorForTraffic(double value) {

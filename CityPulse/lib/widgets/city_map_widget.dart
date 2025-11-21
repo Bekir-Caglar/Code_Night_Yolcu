@@ -7,17 +7,19 @@ import 'package:geolocator/geolocator.dart';
 class CityMapWidget extends StatefulWidget {
   final String currentCity;
   final Position? userPosition;
+  final Map<String, int>? alerts;
 
   const CityMapWidget({
     super.key,
     required this.currentCity,
     this.userPosition,
+    this.alerts,
   });
   @override
-  State<CityMapWidget> createState() => _CityMapWidgetState();
+  CityMapWidgetState createState() => CityMapWidgetState();
 }
 
-class _CityMapWidgetState extends State<CityMapWidget> {
+class CityMapWidgetState extends State<CityMapWidget> {
   late final MapController _mapController;
 
   @override
@@ -38,6 +40,14 @@ class _CityMapWidgetState extends State<CityMapWidget> {
 
   void _moveToUserPosition(Position pos) {
     _mapController.move(LatLng(pos.latitude, pos.longitude), 13.0);
+  }
+
+  // Public method to move map to a city's coordinates
+  void moveToCity(String cityName) {
+    final coords = _getCityCoordinates(cityName);
+    if (coords != null) {
+      _mapController.move(LatLng(coords[0], coords[1]), 13.0);
+    }
   }
 
   @override
@@ -178,6 +188,20 @@ class _CityMapWidgetState extends State<CityMapWidget> {
                   label: 'Bursa',
                   status: CityStatus.critical,
                 ),
+                // Uyarı marker'ları
+                ...?widget.alerts?.entries.map((entry) {
+                  final city = entry.key;
+                  final count = entry.value;
+                  final coords = _getCityCoordinates(city);
+                  if (coords != null) {
+                    return _buildMarker(
+                      position: LatLng(coords[0], coords[1]),
+                      label: '$city\nUyarı: $count',
+                      status: CityStatus.warning,
+                    );
+                  }
+                  return null;
+                }).whereType<Marker>(),
               ],
             ),
           ],

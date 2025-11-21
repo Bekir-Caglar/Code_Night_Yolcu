@@ -3,9 +3,13 @@ import 'package:citypulse/core/theme/app_theme.dart';
 import 'package:citypulse/widgets/city_map_widget.dart';
 import 'package:citypulse/widgets/score_card_widget.dart';
 import 'package:citypulse/features/feedback/feedback_screen.dart';
+import 'package:citypulse/core/network/api_service.dart';
+import 'package:citypulse/core/models/top_green_cities.dart';
+import 'package:citypulse/core/state/city_state.dart';
 import 'package:gap/gap.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:math';
+import 'package:dio/dio.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,150 +25,100 @@ class _HomeScreenState extends State<HomeScreen> {
   LocationPermission? _permissionStatus;
   bool _hasInitializedLocation = false;
 
-  // Mock data for top green cities
-  final Map<String, dynamic> _topGreenCitiesData = {
-    "success": true,
-    "message": "Haftanın en yeşil 3 şehri",
-    "data": {
-      "week_period": {
-        "start_date": "2025-11-14",
-        "end_date": "2025-11-21"
-      },
-      "top_3_green_cities": [
-        {
-          "city_id": "21",
-          "city_name": "Diyarbakir",
-          "region": "Guneydogu Anadolu",
-          "population": 1791000,
-          "sustainability_score": 51.57,
-          "score_breakdown": {
-            "signal_strength": 82.86,
-            "air_quality": 71.43,
-            "internet_traffic": 200.71,
-            "eco_feedback_ratio": 50
-          },
-          "rank": 1,
-          "badge": "🥇 Haftanın En Yeşil Şehri"
-        },
-        {
-          "city_id": "34",
-          "city_name": "Istanbul",
-          "region": "Marmara",
-          "population": 15840000,
-          "sustainability_score": 49.54,
-          "score_breakdown": {
-            "signal_strength": 89.57,
-            "air_quality": 66.43,
-            "internet_traffic": 882.86,
-            "eco_feedback_ratio": 33.33
-          },
-          "rank": 2,
-          "badge": "🥈 İkinci"
-        },
-        {
-          "city_id": "06",
-          "city_name": "Ankara",
-          "region": "Ic Anadolu",
-          "population": 5747000,
-          "sustainability_score": 44.2,
-          "score_breakdown": {
-            "signal_strength": 85.86,
-            "air_quality": 86.43,
-            "internet_traffic": 450,
-            "eco_feedback_ratio": 0
-          },
-          "rank": 3,
-          "badge": "🥉 Üçüncü"
-        }
-      ],
-      "all_cities_count": 5,
-      "evaluated_cities_count": 5
-    }
-  };
+  final GlobalKey<CityMapWidgetState> _mapKey = GlobalKey<CityMapWidgetState>();
 
-  final List<String> _turkishCities = [
-    'Adana',
-    'Adıyaman',
-    'Afyonkarahisar',
-    'Ağrı',
-    'Aksaray',
-    'Amasya',
-    'Ankara',
-    'Antalya',
-    'Ardahan',
-    'Artvin',
-    'Aydın',
-    'Balıkesir',
-    'Bartın',
-    'Batman',
-    'Bayburt',
-    'Bilecik',
-    'Bingöl',
-    'Bitlis',
-    'Bolu',
-    'Burdur',
-    'Bursa',
-    'Çanakkale',
-    'Çankırı',
-    'Çorum',
-    'Denizli',
-    'Diyarbakır',
-    'Düzce',
-    'Edirne',
-    'Elazığ',
-    'Erzincan',
-    'Erzurum',
-    'Eskişehir',
-    'Gaziantep',
-    'Giresun',
-    'Gümüşhane',
-    'Hakkari',
-    'Hatay',
-    'Iğdır',
-    'Isparta',
-    'İstanbul',
-    'İzmir',
-    'Kahramanmaraş',
-    'Karabük',
-    'Karaman',
-    'Kars',
-    'Kastamonu',
-    'Kayseri',
-    'Kilis',
-    'Kırıkkale',
-    'Kırklareli',
-    'Kırşehir',
-    'Kocaeli',
-    'Konya',
-    'Kütahya',
-    'Malatya',
-    'Manisa',
-    'Mardin',
-    'Mersin',
-    'Muğla',
-    'Muş',
-    'Nevşehir',
-    'Niğde',
-    'Ordu',
-    'Osmaniye',
-    'Rize',
-    'Sakarya',
-    'Samsun',
-    'Şanlıurfa',
-    'Siirt',
-    'Sinop',
-    'Şırnak',
-    'Sivas',
-    'Tekirdağ',
-    'Tokat',
-    'Trabzon',
-    'Tunceli',
-    'Uşak',
-    'Van',
-    'Yalova',
-    'Yozgat',
-    'Zonguldak',
-  ];
+  final ApiService _apiService = ApiService();
+  TopGreenCitiesResponse? _topGreenCitiesResponse;
+  bool _isLoadingTopCities = false;
+  Map<String, dynamic>? _cityStatistics;
+  bool _isLoadingStatistics = false;
+
+  Map<String, int> _cities = {}; // API'den yüklenen şehirler
+  Map<String, int> _cityAlerts = {}; // Şehir uyarıları
+
+  final Map<String, int> _turkishCities = {
+    'Adana': 1,
+    'Adıyaman': 2,
+    'Afyonkarahisar': 3,
+    'Ağrı': 4,
+    'Amasya': 5,
+    'Ankara': 6,
+    'Antalya': 7,
+    'Artvin': 8,
+    'Aydın': 9,
+    'Balıkesir': 10,
+    'Bilecik': 11,
+    'Bingöl': 12,
+    'Bitlis': 13,
+    'Bolu': 14,
+    'Burdur': 15,
+    'Bursa': 16,
+    'Çanakkale': 17,
+    'Çankırı': 18,
+    'Çorum': 19,
+    'Denizli': 20,
+    'Diyarbakır': 21,
+    'Edirne': 22,
+    'Elazığ': 23,
+    'Erzincan': 24,
+    'Erzurum': 25,
+    'Eskişehir': 26,
+    'Gaziantep': 27,
+    'Giresun': 28,
+    'Gümüşhane': 29,
+    'Hakkari': 30,
+    'Hatay': 31,
+    'Isparta': 32,
+    'Mersin': 33,
+    'İstanbul': 34,
+    'İzmir': 35,
+    'Kars': 36,
+    'Kastamonu': 37,
+    'Kayseri': 38,
+    'Kırklareli': 39,
+    'Kırşehir': 40,
+    'Kocaeli': 41,
+    'Konya': 42,
+    'Kütahya': 43,
+    'Malatya': 44,
+    'Manisa': 45,
+    'Kahramanmaraş': 46,
+    'Mardin': 47,
+    'Muğla': 48,
+    'Muş': 49,
+    'Nevşehir': 50,
+    'Niğde': 51,
+    'Ordu': 52,
+    'Rize': 53,
+    'Sakarya': 54,
+    'Samsun': 55,
+    'Siirt': 56,
+    'Sinop': 57,
+    'Sivas': 58,
+    'Tekirdağ': 59,
+    'Tokat': 60,
+    'Trabzon': 61,
+    'Tunceli': 62,
+    'Şanlıurfa': 63,
+    'Uşak': 64,
+    'Van': 65,
+    'Yozgat': 66,
+    'Zonguldak': 67,
+    'Aksaray': 68,
+    'Bayburt': 69,
+    'Karaman': 70,
+    'Kırıkkale': 71,
+    'Batman': 72,
+    'Şırnak': 73,
+    'Bartın': 74,
+    'Ardahan': 75,
+    'Iğdır': 76,
+    'Yalova': 77,
+    'Karabük': 78,
+    'Kilis': 79,
+    'Osmaniye': 80,
+    'Düzce': 81,
+  };
 
   // Bazı büyük şehirlerin koordinatları
   final Map<String, List<double>> _cityCoordinates = {
@@ -193,7 +147,123 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    // Şehir map'ini singleton'a set et
+    CityState().setTurkishCitiesMap(_turkishCities);
+    CityState().setCurrentCity(_currentCity);
     // Konum iznini hemen isteme, widget build edildikten sonra iste
+    _loadTopGreenCities();
+  }
+
+  Future<void> _loadTopGreenCities() async {
+    setState(() {
+      _isLoadingTopCities = true;
+    });
+
+    try {
+      final response = await _apiService.getTopGreenCities();
+      setState(() {
+        _topGreenCitiesResponse = response;
+        _isLoadingTopCities = false;
+      });
+    } catch (e) {
+      print('❌ Top green cities API hatası: $e');
+      if (e is DioException) {
+        print('🔍 Dio Error Type: ${e.type}');
+        print('🔍 Dio Error Message: ${e.message}');
+        if (e.response != null) {
+          print('🔍 Response Status Code: ${e.response?.statusCode}');
+          print('🔍 Response Headers: ${e.response?.headers}');
+          print('🔍 Response Data: ${e.response?.data}');
+        } else {
+          print('🔍 No response received');
+        }
+      }
+      setState(() {
+        _isLoadingTopCities = false;
+      });
+    }
+  }
+
+  Future<void> _onCitySelected(String city) async {
+    setState(() {
+      _currentCity = city;
+    });
+    CityState().setCurrentCity(city);
+
+    // Haritayı şehir koordinatlarına götür
+    _mapKey.currentState?.moveToCity(city);
+
+    // Şehir istatistiklerini yükle
+    await _loadCityStatistics(city);
+  }
+
+  Future<void> _loadCityStatistics(String cityName) async {
+    setState(() {
+      _isLoadingStatistics = true;
+    });
+    try {
+      // Şehir adından plaka kodunu bul
+      final cityPlate = _cities[cityName];
+      if (cityPlate != null) {
+        print('Şehir: $cityName, Plaka Kodu: $cityPlate');
+        final cityId = cityPlate.toString().padLeft(2, '0');
+        final response = await _apiService.getCityStatisticsSummary(cityId);
+        print('API Response: $response');
+        setState(() {
+          _cityStatistics = response;
+          _isLoadingStatistics = false;
+        });
+      } else {
+        print('Şehir bulunamadı: $cityName');
+        setState(() {
+          _isLoadingStatistics = false;
+        });
+      }
+    } catch (e) {
+      print('Şehir istatistikleri yüklenirken hata: $e');
+      // Hata durumunda null olarak bırak
+      setState(() {
+        _cityStatistics = null;
+        _isLoadingStatistics = false;
+      });
+    }
+  }
+
+  Future<void> _loadCities() async {
+    try {
+      final response = await _apiService.getCities();
+      final data = response['data'] as List<dynamic>;
+      _cities = {
+        for (var city in data) city['name'] as String: city['id'] as int,
+      };
+      print('Şehirler API\'den yüklendi: $_cities');
+      setState(() {});
+    } catch (e) {
+      print('Şehirler API\'den yüklenemedi, hardcoded kullanılıyor: $e');
+      // Fallback to hardcoded
+      _cities = Map.from(_turkishCities);
+      setState(() {});
+    }
+  }
+
+  Future<void> _loadCityAlerts() async {
+    for (final city in _turkishCities.keys) {
+      final cityId = _turkishCities[city]!.toString().padLeft(2, '0');
+      try {
+        final scores = await _apiService.getCityScores(cityId);
+        if (scores.isNotEmpty) {
+          final lastScore = scores.last;
+          final alerts = lastScore['alerts_count'] as int;
+          if (alerts > 0) {
+            _cityAlerts[city] = alerts;
+          }
+        }
+      } catch (e) {
+        print('Skor alınamadı $city: $e');
+      }
+    }
+    print('Şehir uyarıları yüklendi: $_cityAlerts');
+    setState(() {});
   }
 
   @override
@@ -203,6 +273,8 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!_hasInitializedLocation) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _initializeLocation();
+        _loadCities();
+        _loadCityAlerts();
         _hasInitializedLocation = true;
       });
     }
@@ -293,7 +365,7 @@ class _HomeScreenState extends State<HomeScreen> {
       });
 
       // En yakın şehri bulma
-      String? nearestCity = _findNearestCity(
+      String? nearestCity = await _findNearestCity(
         position.latitude,
         position.longitude,
       );
@@ -304,6 +376,9 @@ class _HomeScreenState extends State<HomeScreen> {
           _currentCity = nearestCity;
           _isLoadingLocation = false;
         });
+        // Şehir bulunduğunda singleton'a set et ve istatistikleri yükle
+        CityState().setCurrentCity(nearestCity);
+        await _loadCityStatistics(nearestCity);
       } else {
         setState(() {
           _isLoadingLocation = false;
@@ -318,7 +393,25 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  String? _findNearestCity(double latitude, double longitude) {
+  Future<String?> _findNearestCity(double latitude, double longitude) async {
+    try {
+      final response = await _apiService.findCityByLocation(
+        latitude,
+        longitude,
+      );
+      // API response'dan şehir adını çıkar
+      if (response['success'] == true && response['data'] != null) {
+        return response['data']['city_name'] as String?;
+      }
+      return null;
+    } catch (e) {
+      print('Şehir arama hatası: $e');
+      // API başarısız olursa fallback olarak eski metodu kullan
+      return _findNearestCityFallback(latitude, longitude);
+    }
+  }
+
+  String? _findNearestCityFallback(double latitude, double longitude) {
     String? nearestCity;
     double minDistance = double.infinity;
 
@@ -414,9 +507,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             Expanded(
               child: ListView.builder(
-                itemCount: _turkishCities.length,
+                itemCount: _cities.length,
                 itemBuilder: (context, index) {
-                  final city = _turkishCities[index];
+                  final city = _cities.keys.elementAt(index);
                   final isSelected = city == _currentCity;
                   return ListTile(
                     title: Text(city),
@@ -427,6 +520,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       setState(() {
                         _currentCity = city;
                       });
+                      // Şehir seçildiğinde koordinat al, haritayı götür ve istatistikleri yükle
+                      _onCitySelected(city);
                       Navigator.pop(context);
                     },
                   );
@@ -556,8 +651,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
             // Map Section
             CityMapWidget(
+              key: _mapKey,
               currentCity: _currentCity,
               userPosition: _currentPosition,
+              alerts: _cityAlerts,
             ),
 
             const Gap(16),
@@ -596,6 +693,27 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildScoreCards() {
+    // İstatistikler yükleniyorsa loading göster
+    if (_isLoadingStatistics) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    // İstatistik verisi yoksa hiçbir şey gösterme
+    if (_cityStatistics == null) {
+      return const SizedBox.shrink();
+    }
+
+    // API verilerini kullan (data objesi içinden)
+    final data = _cityStatistics!['data'] as Map<String, dynamic>?;
+    if (data == null) {
+      return const SizedBox.shrink();
+    }
+
+    final trafficValue = data['avg_internet_usage_gb'] as double? ?? 0.0;
+    final signalValue = data['avg_signal_strength'] as double? ?? 0.0;
+    final airQualityValue = data['avg_air_quality'] as double? ?? 0.0;
+    final paycellValue = data['avg_daily_transactions'] as double? ?? 0.0;
+
     return Column(
       children: [
         Row(
@@ -603,22 +721,20 @@ class _HomeScreenState extends State<HomeScreen> {
             Expanded(
               child: ScoreCardWidget(
                 title: 'Trafik',
-                value: 150.5,
+                value: trafficValue,
                 unit: 'GB',
                 icon: Icons.traffic,
                 color: AppColors.primaryBlue,
-                trend: 12.5,
               ),
             ),
             const Gap(12),
             Expanded(
               child: ScoreCardWidget(
                 title: 'Sinyal',
-                value: 85.0,
+                value: signalValue,
                 unit: '%',
                 icon: Icons.signal_cellular_alt,
                 color: AppColors.accentBlue,
-                trend: 5.2,
               ),
             ),
           ],
@@ -629,32 +745,109 @@ class _HomeScreenState extends State<HomeScreen> {
             Expanded(
               child: ScoreCardWidget(
                 title: 'Hava Kalitesi',
-                value: 72.0,
+                value: airQualityValue,
                 unit: 'AQI',
                 icon: Icons.air,
                 color: AppColors.successGreen,
-                trend: -3.1,
               ),
             ),
             const Gap(12),
             Expanded(
               child: ScoreCardWidget(
                 title: 'Paycell Kullanımı',
-                value: 45.0,
+                value: paycellValue,
                 unit: 'GB',
                 icon: Icons.account_balance_wallet,
                 color: AppColors.primaryYellow,
-                trend: 15.3,
               ),
             ),
           ],
+        ),
+        const Gap(16),
+        // Ek bilgi kartları
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: const Text(
+            'Bugün fiber hat sayesinde 2.4 kg CO₂ tasarrufu yapıldı.',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.primaryBlue,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        const Gap(12),
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: const Text(
+            'TV+ yerine mobil bağlantı tercih eden kullanıcı sayısı: 1,200.',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.primaryBlue,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          ),
         ),
       ],
     );
   }
 
   Widget _buildTopGreenCities() {
-    final cities = _topGreenCitiesData['data']['top_3_green_cities'] as List<dynamic>;
+    // API verisi yükleniyorsa loading göster
+    if (_isLoadingTopCities) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.eco, color: AppColors.successGreen, size: 24),
+                const Gap(8),
+                Text(
+                  'Haftanın Yeşil Şehirleri',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppColors.primaryBlue,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const Gap(12),
+            const Center(child: CircularProgressIndicator()),
+          ],
+        ),
+      );
+    }
+
+    // API verisi varsa onu kullan, yoksa boş liste
+    final cities = _topGreenCitiesResponse?.data.top3GreenCities ?? [];
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -677,124 +870,137 @@ class _HomeScreenState extends State<HomeScreen> {
           const Gap(12),
           SizedBox(
             height: 140, // Slightly taller for better visibility
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: cities.length,
-              itemBuilder: (context, index) {
-                final city = cities[index] as Map<String, dynamic>;
-                final rank = city['rank'] as int;
-                Color cardColor;
-                Color textColor = Colors.black; // Changed to black for better readability
-                IconData rankIcon;
-
-                switch (rank) {
-                  case 1:
-                    cardColor = const Color(0xFFFFD700); // Gold
-                    rankIcon = Icons.emoji_events;
-                    break;
-                  case 2:
-                    cardColor = const Color(0xFFC0C0C0); // Silver
-                    rankIcon = Icons.emoji_events;
-                    break;
-                  case 3:
-                    cardColor = const Color(0xFFCD7F32); // Bronze
-                    rankIcon = Icons.emoji_events;
-                    break;
-                  default:
-                    cardColor = AppColors.primaryBlue;
-                    rankIcon = Icons.star;
-                }
-
-                return Container(
-                  width: 180,
-                  margin: const EdgeInsets.only(right: 12),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [cardColor.withOpacity(0.8), cardColor],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+            child: cities.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Şu anda veri yüklenemiyor',
+                      style: TextStyle(color: Colors.grey),
                     ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: cardColor.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(rankIcon, color: textColor, size: 20),
-                            const Spacer(),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                '${city['sustainability_score'].toStringAsFixed(1)}',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: textColor,
-                                ),
-                              ),
+                  )
+                : ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: cities.length,
+                    itemBuilder: (context, index) {
+                      final city = cities[index];
+                      final rank = city.rank;
+                      Color cardColor;
+                      Color textColor = Colors
+                          .black; // Changed to black for better readability
+                      IconData rankIcon;
+
+                      switch (rank) {
+                        case 1:
+                          cardColor = const Color(0xFFFFD700); // Gold
+                          rankIcon = Icons.emoji_events;
+                          break;
+                        case 2:
+                          cardColor = const Color(0xFFC0C0C0); // Silver
+                          rankIcon = Icons.emoji_events;
+                          break;
+                        case 3:
+                          cardColor = const Color(0xFFCD7F32); // Bronze
+                          rankIcon = Icons.emoji_events;
+                          break;
+                        default:
+                          cardColor = AppColors.primaryBlue;
+                          rankIcon = Icons.star;
+                      }
+
+                      return Container(
+                        width: 180,
+                        margin: const EdgeInsets.only(right: 12),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [cardColor.withOpacity(0.8), cardColor],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: cardColor.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
                             ),
                           ],
                         ),
-                        const Spacer(),
-                        Text(
-                          city['city_name'],
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: textColor,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const Gap(4),
-                        Text(
-                          city['region'],
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: textColor.withOpacity(0.8),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const Gap(8),
-                        Container(
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                          child: FractionallySizedBox(
-                            alignment: Alignment.centerLeft,
-                            widthFactor: (city['sustainability_score'] as double) / 100,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.8),
-                                borderRadius: BorderRadius.circular(2),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(rankIcon, color: textColor, size: 20),
+                                  const Spacer(),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      '${city.sustainabilityScore.toStringAsFixed(1)}',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: textColor,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
+                              const Spacer(),
+                              Text(
+                                city.cityName,
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: textColor,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const Gap(4),
+                              Text(
+                                city.region,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: textColor.withOpacity(0.8),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const Gap(8),
+                              Container(
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                                child: FractionallySizedBox(
+                                  alignment: Alignment.centerLeft,
+                                  widthFactor: city.sustainabilityScore / 100,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.8),
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
+          const Gap(16),
+          // Ek bilgi kartları taşındı
         ],
       ),
     );

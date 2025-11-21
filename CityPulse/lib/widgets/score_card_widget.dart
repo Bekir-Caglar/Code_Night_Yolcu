@@ -8,7 +8,7 @@ class ScoreCardWidget extends StatelessWidget {
   final String unit;
   final IconData icon;
   final Color color;
-  final double trend;
+  final double? trend;
 
   const ScoreCardWidget({
     super.key,
@@ -17,12 +17,12 @@ class ScoreCardWidget extends StatelessWidget {
     required this.unit,
     required this.icon,
     required this.color,
-    required this.trend,
+    this.trend,
   });
 
   @override
   Widget build(BuildContext context) {
-    final bool isPositiveTrend = trend >= 0;
+    final bool isPositiveTrend = trend != null && trend! >= 0;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -52,37 +52,43 @@ class ScoreCardWidget extends StatelessWidget {
                 ),
                 child: Icon(icon, color: color, size: 24),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isPositiveTrend
-                      ? AppColors.successGreen.withOpacity(0.1)
-                      : AppColors.alertRed.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      isPositiveTrend ? Icons.trending_up : Icons.trending_down,
-                      size: 14,
-                      color: isPositiveTrend
-                          ? AppColors.successGreen
-                          : AppColors.alertRed,
-                    ),
-                    const Gap(2),
-                    Text(
-                      '${trend.abs().toStringAsFixed(1)}%',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+              if (trend != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isPositiveTrend
+                        ? AppColors.successGreen.withOpacity(0.1)
+                        : AppColors.alertRed.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isPositiveTrend
+                            ? Icons.trending_up
+                            : Icons.trending_down,
+                        size: 14,
                         color: isPositiveTrend
                             ? AppColors.successGreen
                             : AppColors.alertRed,
                       ),
-                    ),
-                  ],
+                      const Gap(2),
+                      Text(
+                        '${trend!.abs().toStringAsFixed(1)}%',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: isPositiveTrend
+                              ? AppColors.successGreen
+                              : AppColors.alertRed,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
             ],
           ),
           const Gap(16),
