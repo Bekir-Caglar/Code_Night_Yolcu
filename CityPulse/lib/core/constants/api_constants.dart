@@ -1,6 +1,6 @@
 class ApiConstants {
   // Base URLs
-  static const String baseUrl = 'http://10.246.95.185:8000';
+  static const String baseUrl = 'http://localhost:8000';
   static const String apiVersion = '/api';
 
   // Root endpoint
