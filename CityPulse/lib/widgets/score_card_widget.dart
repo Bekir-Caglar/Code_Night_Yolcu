@@ -54,10 +54,7 @@ class ScoreCardWidget extends StatelessWidget {
               ),
               if (trend != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: isPositiveTrend
                         ? AppColors.successGreen.withOpacity(0.1)
@@ -67,9 +64,7 @@ class ScoreCardWidget extends StatelessWidget {
                   child: Row(
                     children: [
                       Icon(
-                        isPositiveTrend
-                            ? Icons.trending_up
-                            : Icons.trending_down,
+                        isPositiveTrend ? Icons.trending_up : Icons.trending_down,
                         size: 14,
                         color: isPositiveTrend
                             ? AppColors.successGreen
@@ -84,11 +79,11 @@ class ScoreCardWidget extends StatelessWidget {
                           color: isPositiveTrend
                               ? AppColors.successGreen
                               : AppColors.alertRed,
-                        ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
+              ),
             ],
           ),
           const Gap(16),

@@ -236,6 +236,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     required Color color,
   }) {
     double percentage = (value / maxValue).clamp(0.0, 1.0);
+    // Bar'ın pointer'ının rengini belirle
+    Color barColor;
+    if (percentage < 0.33) {
+      barColor = AppColors.alertRed;
+    } else if (percentage < 0.66) {
+      barColor = AppColors.primaryYellow;
+    } else {
+      barColor = AppColors.successGreen;
+    }
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -269,7 +278,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: color,
+                    color: barColor,
                   ),
                 ),
               ],
